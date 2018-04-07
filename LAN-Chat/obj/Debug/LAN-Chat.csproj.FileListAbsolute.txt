@@ -16,3 +16,4 @@ C:\Users\Sir\source\repos\LAN-Chat\LAN-Chat\obj\Debug\LAN-Chat.csproj.CoreCompil
 C:\Users\Sir\source\repos\LAN-Chat\LAN-Chat\obj\Debug\LAN-Chat.csproj.CopyComplete
 C:\Users\Sir\source\repos\LAN-Chat\LAN-Chat\obj\Debug\LAN-Chat.exe
 C:\Users\Sir\source\repos\LAN-Chat\LAN-Chat\obj\Debug\LAN-Chat.pdb
+C:\Users\Sir\source\repos\LAN-Chat\LAN-Chat\obj\Debug\GeneratedInternalTypeHelper.g.cs

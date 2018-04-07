@@ -48,7 +48,9 @@ namespace LAN_Chat
 
 
         public IPAddress IPLocalAddress { get; set; }
+        public IPAddress IPRemoteAddress { get; set; } = IPAddress.None;
 
+        public int Port { get; set; } = 8000;
 
         public string IPLocalString
         {
@@ -59,10 +61,19 @@ namespace LAN_Chat
         public int ChatBlockHeight { get; set; } = 350;
 
 
+
+
         public bool ConnectionEstablished
         {
             get { return _ConnectionEstablished; }
-            set { _ConnectionEstablished = value; ((RelayCommand)SendCommand).RaiseCanExecuteChanged(); }
+            set
+            {
+                ButtonConnectContent = value ? "Disconnect" : "Connect";
+                _ConnectionEstablished = value;
+
+                ((RelayCommand)SendCommand).RaiseCanExecuteChanged();
+
+            }
         }
 
 
@@ -100,14 +111,20 @@ namespace LAN_Chat
         }
 
 
-        // // // ////////////////////////////////////
-        delegate void setPropertyValue();
-
         private void ConnectionWorker_DoWork(object sender, DoWorkEventArgs e)
         {
+            System.Windows.Threading.Dispatcher dispatcher = Application.Current.Dispatcher;
+            
             LogMessage = "Waiting for connection...";
 
+            listener = new TcpListener(IPLocalAddress, Port);
 
+
+
+            dispatcher.Invoke(() => MessageBox.Show(IPRemoteAddress.ToString()));
+
+            Thread.Sleep(200);
+            dispatcher.Invoke(new Action(() => ConnectionEstablished = true));
 
             LogMessage = "Connected";
         }
@@ -124,12 +141,7 @@ namespace LAN_Chat
             else
             {
                 Connect();
-                ConnectionEstablished = true;
             }
-
-            //Thread.Sleep(200);
-
-            ButtonConnectContent = ConnectionEstablished ? "Disconnect" : "Connect";
 
             return;
         }
@@ -137,8 +149,6 @@ namespace LAN_Chat
         private void Connect()
         {
             ConnectionWorker.RunWorkerAsync();
-            
-            // wait ffor establishing connection
         }
 
         private void Disconnect()
@@ -152,7 +162,7 @@ namespace LAN_Chat
                     client.Close();
 
             }
-                LogMessage = "Disconnected";
+            LogMessage = "Disconnected";
 
             ConnectionWorker.CancelAsync();
             ReceivingWorker.CancelAsync();

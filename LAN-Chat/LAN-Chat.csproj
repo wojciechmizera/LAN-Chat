@@ -59,6 +59,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="IPAddressConverter.cs" />
     <Compile Include="Komunikaty.cs" />
     <Compile Include="RelayCommand.cs" />
     <Page Include="MainWindow.xaml">
