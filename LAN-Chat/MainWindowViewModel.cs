@@ -41,6 +41,8 @@ namespace LAN_Chat
         BinaryReader reader;
         BinaryWriter writer;
 
+        MainWindow window;
+
         #endregion
 
 
@@ -60,8 +62,10 @@ namespace LAN_Chat
 
         public int ChatBlockHeight { get; set; } = 350;
 
+        public bool IsServer { get; set; }
 
-
+        public string MessagesList { get; set; }
+        public string Message { get; set; }
 
         public bool ConnectionEstablished
         {
@@ -72,7 +76,6 @@ namespace LAN_Chat
                 _ConnectionEstablished = value;
 
                 ((RelayCommand)SendCommand).RaiseCanExecuteChanged();
-
             }
         }
 
@@ -93,8 +96,11 @@ namespace LAN_Chat
 
 
 
-        public MainWindowViewModel()
+        public MainWindowViewModel(MainWindow w)
         {
+            window = w;
+            w.Closed += Window_Closed;
+
             IPLocalAddress = GetLocalIP();
 
             SendCommand = new RelayCommand((s) => SendMessage(), () => ConnectionEstablished);
@@ -111,68 +117,147 @@ namespace LAN_Chat
         }
 
 
-        private void ConnectionWorker_DoWork(object sender, DoWorkEventArgs e)
-        {
-            System.Windows.Threading.Dispatcher dispatcher = Application.Current.Dispatcher;
-            
-            LogMessage = "Waiting for connection...";
-
-            listener = new TcpListener(IPLocalAddress, Port);
-
-
-
-            dispatcher.Invoke(() => MessageBox.Show(IPRemoteAddress.ToString()));
-
-            Thread.Sleep(200);
-            dispatcher.Invoke(new Action(() => ConnectionEstablished = true));
-
-            LogMessage = "Connected";
-        }
-
-        private void ReceivingWorker_DoWork(object sender, DoWorkEventArgs e)
-        {
-            throw new NotImplementedException();
-        }
 
         private void SetUpConnection()
         {
             if (ConnectionEstablished)
+            {
+                writer.Write(Komunikaty.DISCONNECT);
                 Disconnect();
+                ButtonConnectContent = "Connect";
+            }
             else
             {
                 Connect();
+                ButtonConnectContent = "Disconnect";
             }
 
             return;
         }
+
 
         private void Connect()
         {
             ConnectionWorker.RunWorkerAsync();
         }
 
+
         private void Disconnect()
         {
             if (ConnectionEstablished)
             {
-                //writer.Write(Komunikaty.DISCONNECT);
 
-                ConnectionEstablished = false;
+                Application.Current.Dispatcher.Invoke(new Action(() => ConnectionEstablished = false));
                 if (client != null)
                     client.Close();
-
+                if (listener != null)
+                    listener.Stop();
             }
-            LogMessage = "Disconnected";
-
             ConnectionWorker.CancelAsync();
             ReceivingWorker.CancelAsync();
         }
 
+
+        private void ConnectionWorker_DoWork(object sender, DoWorkEventArgs e)
+        {
+            System.Windows.Threading.Dispatcher dispatcher = Application.Current.Dispatcher;
+
+            LogMessage = "Waiting for connection...";
+
+            if (IsServer)
+            {
+                WaitForClient();
+
+                LogMessage = "Connection requested";
+            }
+            else
+            {
+                ConnectToServer();
+
+                LogMessage = "Connection Established / Requesting permission";
+            }
+
+            InitializeStreams();
+        }
+
+
+        private void InitializeStreams()
+        {
+            NetworkStream stream = client.GetStream();
+            writer = new BinaryWriter(stream);
+            reader = new BinaryReader(stream);
+
+            if (reader.ReadString() == Komunikaty.REQUEST)
+            {
+                writer.Write(Komunikaty.OK);
+                LogMessage = "Connected";
+                Application.Current.Dispatcher.Invoke(new Action(() => ConnectionEstablished = true));
+
+                ReceivingWorker.RunWorkerAsync();
+            }
+            else
+            {
+                LogMessage = "Network error, disconnected";
+                Disconnect();
+            }
+        }
+
+
+        private void ConnectToServer()
+        {
+            client = new TcpClient();
+            client.Connect(IPRemoteAddress, Port);
+        }
+
+        private void WaitForClient()
+        {
+            listener = new TcpListener(IPLocalAddress, Port);
+            listener.Start();
+
+            while (!listener.Pending())
+            {
+                if (ConnectionWorker.CancellationPending)
+                {
+                    Disconnect();
+                    return;
+                }
+                Thread.Sleep(200);
+            }
+            client = listener.AcceptTcpClient();
+        }
+
+
+        private void ReceivingWorker_DoWork(object sender, DoWorkEventArgs e)
+        {
+
+            string text;
+            while ((text = reader.ReadString()) != Komunikaty.DISCONNECT)
+            {
+                MessagesList += "Friend: " + text + "\n";
+            }
+
+            LogMessage = "Disconnected";
+
+            Disconnect();
+
+            ButtonConnectContent = "Connect";
+        }
+
+
+
         private void SendMessage()
         {
-            MessageBox.Show("Sending message");
-            return;
+            if (Message == "")
+                return;
+            if (Message[Message.Length - 1] == '\n')
+                Message = Message.TrimEnd('\n');
+
+            writer.Write(Message);
+            MessagesList += "Me: " + Message + "\n";
+            Message = "";
         }
+
+
 
         private IPAddress GetLocalIP()
         {
@@ -181,5 +266,14 @@ namespace LAN_Chat
             return address;
 
         }
+
+
+        private void Window_Closed(object sender, EventArgs e)
+        {
+            Disconnect();
+        }
+
+
+
     }
 }

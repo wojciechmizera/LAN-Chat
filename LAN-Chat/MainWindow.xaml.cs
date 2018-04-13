@@ -22,11 +22,12 @@ namespace LAN_Chat
     {
         public MainWindow()
         {
-            InitializeComponent();
-            DataContext = new MainWindowViewModel();
 
+            InitializeComponent();
            
+            DataContext = new MainWindowViewModel(this);
 
         }
+
     }
 }
